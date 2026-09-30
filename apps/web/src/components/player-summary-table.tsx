@@ -4,6 +4,10 @@
 import { ExternalLink } from 'lucide-react'
 import type { CSSProperties, FC } from 'react'
 
+import {
+  healTextColor,
+  threatStateTextColorByKind,
+} from '../lib/data-text-colors'
 import { formatNumber } from '../lib/format'
 import {
   resolveSpellSchoolColor,
@@ -44,8 +48,7 @@ export type PlayerSummaryTableProps = {
 }
 
 const modifierValueTolerance = 0.0005
-const healAmountColor = '#22c55e'
-const fixateRowColor = '#ffa500'
+const fixateRowColor = threatStateTextColorByKind.fixate
 
 function buildWowheadSpellUrl(wowheadDomain: string, spellId: number): string {
   return `https://www.wowhead.com/${wowheadDomain}/spell=${spellId}`
@@ -141,7 +144,7 @@ function resolveThreatRowColor(row: FocusedPlayerThreatRow): string | null {
   }
 
   if (row.isHeal) {
-    return healAmountColor
+    return healTextColor
   }
 
   if (isResourceRow(row)) {
@@ -203,7 +206,7 @@ export const PlayerSummaryTable: FC<PlayerSummaryTableProps> = ({
 
   return (
     <div className="grid gap-4 md:grid-cols-[280px_minmax(0,1fr)]">
-      <Card className="bg-panel" size="sm">
+      <Card size="sm">
         <CardContent className="space-y-2">
           <div className="text-xs uppercase tracking-wide text-foreground">
             Focused actor
@@ -261,7 +264,7 @@ export const PlayerSummaryTable: FC<PlayerSummaryTableProps> = ({
         </CardContent>
       </Card>
 
-      <Card className="bg-panel" size="sm">
+      <Card size="sm">
         <CardContent>
           {rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">
