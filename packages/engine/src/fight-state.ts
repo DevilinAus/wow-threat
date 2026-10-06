@@ -546,6 +546,14 @@ export class FightState {
     return new Set(this.getActorStateByReference(actor)?.auras ?? [])
   }
 
+  /** Get WCL talent entry ranks for an actor instance. */
+  getTalentRanksForActor(actor: ActorReference): ReadonlyMap<number, number> {
+    return (
+      this.getActorStateByReference(actor)?.getTalentRanks() ??
+      new Map<number, number>()
+    )
+  }
+
   /** Get active auras for an actor at instance 0 (compatibility method). */
   getAuras(actorId: ActorId): Set<number> {
     return new Set(this.getActorState(actorId)?.auras ?? [])
@@ -606,6 +614,7 @@ export class FightState {
     const classConfig = wowClass ? config.classes[wowClass] : undefined
     const gear = actorState.gearTracker.getGear()
     const { talentPoints, talentRanks, specId } = buildTalentContext(event)
+    actorState.setTalentRanks(talentRanks)
 
     const talentImplicationContext = {
       event,

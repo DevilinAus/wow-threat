@@ -304,6 +304,17 @@ export interface BaseThreatConfig {
 }
 
 export type AuraModifierFn = (ctx: ThreatContext) => ThreatModifier
+export type TalentModifierFn = (
+  ctx: ThreatContext,
+  rank: number,
+) => ThreatModifier
+export interface TalentModifierConfig {
+  /** Real spell ID used to identify the talent in modifier output. */
+  spellId: SpellId
+  /** Highest valid rank accepted from report data. */
+  maxRank: number
+  modifier: TalentModifierFn
+}
 export interface TalentImplicationContext {
   event: CombatantInfoEvent
   sourceActor: Actor | null
@@ -317,6 +328,7 @@ export type TalentImplicationsFn = (ctx: TalentImplicationContext) => number[]
 export type AuraImplications = ReadonlyMap<SpellId, ReadonlySet<SpellId>>
 
 export type AuraModifiers = Record<number, AuraModifierFn>
+export type TalentModifiers = Record<number, TalentModifierConfig>
 
 export type Abilities = Record<number, ThreatFormula>
 
@@ -334,6 +346,9 @@ export interface ClassThreatConfig {
 
   /** Called when combatantInfo is received to detect talent-based synthetic auras */
   talentImplications?: TalentImplicationsFn
+
+  /** Rank-aware threat modifiers keyed by the talent entry ID reported by WCL. */
+  talentModifiers?: TalentModifiers
 
   /** Implied aura state keyed by aura spell ID -> cast spell IDs that imply it */
   auraImplications?: AuraImplications
