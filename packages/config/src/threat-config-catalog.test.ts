@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { eraConfig } from './era'
+import { foreverConfig } from './forever'
 import { sodConfig } from './sod'
 import { tbcConfig } from './tbc'
 import {
@@ -19,6 +20,7 @@ describe('threat config catalog', () => {
     expect(parseThreatConfigId('anniversary')).toBe('anniversary')
     expect(parseThreatConfigId('era')).toBe('era')
     expect(parseThreatConfigId('sod')).toBe('sod')
+    expect(parseThreatConfigId('forever')).toBe('forever')
   })
 
   it('rejects missing and unknown config ids', () => {
@@ -26,13 +28,13 @@ describe('threat config catalog', () => {
     expect(parseThreatConfigId('')).toBeNull()
     expect(parseThreatConfigId('   ')).toBeNull()
     expect(parseThreatConfigId('retail')).toBeNull()
-    expect(parseThreatConfigId('forever')).toBeNull()
   })
 
   it('returns the registered config for each id', () => {
-    expect(threatConfigIds).toEqual(['era', 'sod', 'anniversary'])
+    expect(threatConfigIds).toEqual(['era', 'sod', 'anniversary', 'forever'])
     expect(getThreatConfigById('era')).toBe(eraConfig)
     expect(getThreatConfigById('sod')).toBe(sodConfig)
     expect(getThreatConfigById('anniversary')).toBe(tbcConfig)
+    expect(getThreatConfigById('forever')).toBe(foreverConfig)
   })
 })
