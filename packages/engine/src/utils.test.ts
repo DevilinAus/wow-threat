@@ -6,7 +6,7 @@ import {
 import type { DamageEvent, EnergizeEvent } from '@wow-threat/wcl-types'
 import { describe, expect, it } from 'vitest'
 
-import { getActiveModifiers } from './utils'
+import { getActiveModifiers, getActiveTalentModifiers } from './utils'
 
 // Mock context factory
 function createMockContext(
@@ -199,5 +199,86 @@ describe('getActiveModifiers', () => {
 
     const result = getActiveModifiers(ctx, modifiers)
     expect(result).toHaveLength(0)
+  })
+})
+
+describe('getActiveTalentModifiers', () => {
+  it('uses the reported rank and real talent spell ID', () => {
+    const ctx = createMockContext()
+    const result = getActiveTalentModifiers(ctx, new Map([[5000, 3]]), {
+      5000: {
+        spellId: 6000,
+        maxRank: 5,
+        modifier: (_ctx, rank) => ({
+          source: 'talent',
+          name: `Ranked Talent ${rank}`,
+          value: 1 + rank * 0.05,
+        }),
+      },
+    })
+
+    expect(result).toEqual([
+      {
+        source: 'talent',
+        sourceId: 6000,
+        name: 'Ranked Talent 3',
+        value: 1.15,
+      },
+    ])
+  })
+
+  it('ignores absent talents and clamps ranks to the configured maximum', () => {
+    const ctx = createMockContext()
+    const talentModifiers = {
+      5000: {
+        spellId: 6000,
+        maxRank: 2,
+        modifier: (_ctx: ThreatContext, rank: number) => ({
+          source: 'talent' as const,
+          name: `Ranked Talent ${rank}`,
+          value: rank,
+        }),
+      },
+    }
+
+    expect(getActiveTalentModifiers(ctx, new Map(), talentModifiers)).toEqual(
+      [],
+    )
+    expect(
+      getActiveTalentModifiers(ctx, new Map([[5000, 99]]), talentModifiers)[0]
+        ?.value,
+    ).toBe(2)
+  })
+
+  it('applies the same spell filters used by aura modifiers', () => {
+    const talentModifiers = {
+      5000: {
+        spellId: 6000,
+        maxRank: 1,
+        modifier: () => ({
+          source: 'talent' as const,
+          name: 'Scoped Talent',
+          value: 1.1,
+          spellIds: new Set([100]),
+        }),
+      },
+    }
+
+    expect(
+      getActiveTalentModifiers(
+        createMockContext(),
+        new Map([[5000, 1]]),
+        talentModifiers,
+      ),
+    ).toHaveLength(1)
+    expect(
+      getActiveTalentModifiers(
+        createMockContext({
+          event: { type: 'damage', abilityGameID: 101 } as DamageEvent,
+        }),
+        new Map([[5000, 1]]),
+        talentModifiers,
+      ),
+    ).toHaveLength(0)
   })
 })

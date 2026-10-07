@@ -4,10 +4,11 @@
 import type { ThreatConfig } from '@wow-threat/shared'
 
 import { eraConfig } from './era'
+import { foreverConfig } from './forever'
 import { sodConfig } from './sod'
 import { tbcConfig } from './tbc'
 
-export const threatConfigIds = ['era', 'sod', 'anniversary'] as const
+export const threatConfigIds = ['era', 'sod', 'anniversary', 'forever'] as const
 
 export type ThreatConfigId = (typeof threatConfigIds)[number]
 
@@ -16,12 +17,14 @@ const threatConfigIdAliases = {
   sod: 'sod',
   anniversary: 'anniversary',
   tbc: 'anniversary',
+  forever: 'forever',
 } as const satisfies Record<string, ThreatConfigId>
 
 const threatConfigsById = {
   era: eraConfig,
   sod: sodConfig,
   anniversary: tbcConfig,
+  forever: foreverConfig,
 } as const satisfies Record<ThreatConfigId, ThreatConfig>
 
 /** Parse a config id from a query param. `tbc` is an alias for `anniversary`. */

@@ -86,6 +86,8 @@ const SPELLS = {
   // Set bonus
   SET_BONUS_AURA: 3001,
   MOCK_DEFIANCE_RANK_5_AURA: 3002,
+  MOCK_RANKED_TALENT: 3003,
+  MOCK_RANKED_TALENT_ENTRY: 4001,
 } as const
 
 /**
@@ -187,6 +189,18 @@ const mockConfig = createMockThreatConfig({
       },
       talentImplications: ({ talentPoints }) =>
         (talentPoints[2] ?? 0) >= 31 ? [SPELLS.MOCK_DEFIANCE_RANK_5_AURA] : [],
+      talentModifiers: {
+        [SPELLS.MOCK_RANKED_TALENT_ENTRY]: {
+          spellId: SPELLS.MOCK_RANKED_TALENT,
+          maxRank: 5,
+          modifier: (_ctx, rank) => ({
+            source: 'talent',
+            name: `Mock Ranked Talent (Rank ${rank})`,
+            value: 1 + rank * 0.05,
+            spellIds: new Set([SPELLS.MOCK_ABILITY_1]),
+          }),
+        },
+      },
 
       fixateBuffs: new Set(),
       aggroLossBuffs: new Set(),
@@ -2156,6 +2170,64 @@ describe('threat-engine', () => {
       expect(talentModifier).toBeDefined()
       expect(talentModifier?.name).toBe('Defiance (Rank 5)')
       expect(talentModifier?.value).toBe(1.15)
+    })
+
+    it('applies rank-aware WCL talent modifiers without synthetic auras', () => {
+      const actorMap = new Map<number, Actor>([[warriorActor.id, warriorActor]])
+      const events: WCLEvent[] = [
+        {
+          timestamp: 1000,
+          type: 'combatantinfo',
+          sourceID: warriorActor.id,
+          sourceIsFriendly: true,
+          targetID: warriorActor.id,
+          targetIsFriendly: true,
+          talentTree: [
+            {
+              nodeID: 9001,
+              id: SPELLS.MOCK_RANKED_TALENT_ENTRY,
+              rank: 3,
+            },
+          ],
+        },
+        createDamageEvent({
+          sourceID: warriorActor.id,
+          targetID: bossEnemy.id,
+          abilityGameID: SPELLS.MOCK_ABILITY_1,
+          amount: 100,
+        }),
+        createDamageEvent({
+          sourceID: warriorActor.id,
+          targetID: bossEnemy.id,
+          abilityGameID: SPELLS.MOCK_ABILITY_2,
+          amount: 100,
+        }),
+      ]
+
+      const result = processEvents({
+        rawEvents: events,
+        actorMap,
+        enemies,
+        config: mockConfig,
+      })
+      const damageEvents = result.augmentedEvents.filter(
+        (event) => event.type === 'damage',
+      )
+      const rankedModifier =
+        damageEvents[0]?.threat?.calculation.modifiers.find(
+          (modifier) => modifier.name === 'Mock Ranked Talent (Rank 3)',
+        )
+
+      expect(rankedModifier).toMatchObject({
+        source: 'talent',
+        sourceId: SPELLS.MOCK_RANKED_TALENT,
+        value: 1.15,
+      })
+      expect(
+        damageEvents[1]?.threat?.calculation.modifiers.some((modifier) =>
+          modifier.name.startsWith('Mock Ranked Talent'),
+        ),
+      ).toBe(false)
     })
 
     it('processes combatantinfo for unknown actor gracefully', () => {

@@ -30,4 +30,5 @@ export * from './shared/utils'
 // Re-export version configs for testing
 export { tbcConfig as anniversaryConfig } from './tbc'
 export { eraConfig } from './era'
+export { foreverConfig } from './forever'
 export { sodConfig } from './sod'

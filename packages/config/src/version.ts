@@ -5,6 +5,8 @@
  * bumping any config version invalidates immutable event responses.
  */
 import { eraConfig } from './era'
+// TODO(WoW Forever): Uncomment when Forever reports participate in config resolution.
+// import { foreverConfig } from './forever'
 import { sodConfig } from './sod'
 import { tbcConfig } from './tbc'
 
@@ -12,11 +14,17 @@ export const configVersionVector = {
   era: eraConfig.version,
   sod: sodConfig.version,
   anniversary: tbcConfig.version,
+  // forever: foreverConfig.version,
 } as const
 
 /**
  * Shared cache tag used by API/web for immutable event responses.
  *
- * Concatenate in fixed order: era + sod + anniversary.
+ * Concatenate in fixed order: era + sod + anniversary (+ Forever once active).
  */
-export const configCacheVersion = `${String(configVersionVector.era)}${String(configVersionVector.sod)}${String(configVersionVector.anniversary)}`
+export const configCacheVersion = [
+  String(configVersionVector.era),
+  String(configVersionVector.sod),
+  String(configVersionVector.anniversary),
+  // String(configVersionVector.forever),
+].join('')

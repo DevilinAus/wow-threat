@@ -16,6 +16,7 @@ import type {
   EncounterThreatConfig,
   Enemy,
   SpellId,
+  TalentModifiers,
   ThreatCalculation,
   ThreatChange,
   ThreatConfig,
@@ -46,15 +47,21 @@ import {
   defaultFightProcessorFactories,
   significantEnemyIdsKey,
 } from './processors'
-import { getActiveModifiers, getTotalMultiplier } from './utils'
+import {
+  getActiveModifiers,
+  getActiveTalentModifiers,
+  getTotalMultiplier,
+} from './utils'
 
 const ENVIRONMENT_TARGET_ID = -1
 const BOSS_MELEE_SPELL_ID = 1
+const EMPTY_TALENT_RANKS: ReadonlyMap<number, number> = new Map()
 
 interface PreparedThreatConfig {
   mergedAbilities: Record<number, ThreatFormula>
   mergedAuraModifiers: Record<number, (ctx: ThreatContext) => ThreatModifier>
   classModifiers: Partial<Record<WowClass, ThreatModifier>>
+  talentModifiers: Partial<Record<WowClass, TalentModifiers>>
 }
 
 const preparedThreatConfigCache = new WeakMap<
@@ -79,6 +86,7 @@ function prepareThreatConfig(config: ThreatConfig): PreparedThreatConfig {
     ...config.auraModifiers,
   }
   const classModifiers: PreparedThreatConfig['classModifiers'] = {}
+  const talentModifiers: PreparedThreatConfig['talentModifiers'] = {}
 
   for (const [className, classConfig] of Object.entries(
     config.classes,
@@ -89,6 +97,10 @@ function prepareThreatConfig(config: ThreatConfig): PreparedThreatConfig {
 
     if (classConfig?.auraModifiers) {
       Object.assign(mergedAuraModifiers, classConfig.auraModifiers)
+    }
+
+    if (classConfig?.talentModifiers) {
+      talentModifiers[className] = classConfig.talentModifiers
     }
 
     if (
@@ -107,6 +119,7 @@ function prepareThreatConfig(config: ThreatConfig): PreparedThreatConfig {
     mergedAbilities,
     mergedAuraModifiers,
     classModifiers,
+    talentModifiers,
   }
   preparedThreatConfigCache.set(config, prepared)
 
@@ -375,6 +388,10 @@ function processOneEvent(params: ProcessOneEventParams): void {
 
   const threatOptions: CalculateThreatOptions = {
     sourceAuras: fightState.getAurasForActor({
+      id: event.sourceID,
+      instanceId: event.sourceInstance,
+    }),
+    sourceTalentRanks: fightState.getTalentRanksForActor({
       id: event.sourceID,
       instanceId: event.sourceInstance,
     }),
@@ -1235,6 +1252,7 @@ function buildAugmentedEvent(
 
 export interface CalculateThreatOptions {
   sourceAuras: ReadonlySet<SpellId>
+  sourceTalentRanks?: ReadonlyMap<number, number>
   targetAuras: ReadonlySet<SpellId>
   spellSchoolMask?: number
   enemies: Enemy[] // Still needed for building threat values
@@ -1272,7 +1290,16 @@ export function calculateModifiedThreat(
     preparedConfig,
   )
   const allModifiers: AppliedThreatModifier[] = shouldApplyPlayerMultipliers
-    ? [...classModifiers, ...getAuraModifiers(ctx, preparedConfig)]
+    ? [
+        ...classModifiers,
+        ...getAuraModifiers(ctx, preparedConfig),
+        ...getTalentModifiers(
+          ctx,
+          options.sourceTalentRanks ?? EMPTY_TALENT_RANKS,
+          options.sourceActor.class,
+          preparedConfig,
+        ),
+      ]
     : []
 
   // Calculate total multiplier
@@ -1428,4 +1455,21 @@ function getAuraModifiers(
 ): AppliedThreatModifier[] {
   // Apply the merged aura modifiers based on active auras
   return getActiveModifiers(ctx, preparedConfig.mergedAuraModifiers)
+}
+
+/** Get WCL rank-aware talent modifiers for the source actor's class. */
+function getTalentModifiers(
+  ctx: ThreatContext,
+  talentRanks: ReadonlyMap<number, number>,
+  wowClass: WowClass | null,
+  preparedConfig: PreparedThreatConfig,
+): AppliedThreatModifier[] {
+  if (!wowClass) {
+    return []
+  }
+
+  const talentModifiers = preparedConfig.talentModifiers[wowClass]
+  return talentModifiers
+    ? getActiveTalentModifiers(ctx, talentRanks, talentModifiers)
+    : []
 }

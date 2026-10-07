@@ -80,6 +80,7 @@ export class ActorState {
   private position: ActorPosition | null = null
   private currentTarget: ActorTargetReference | null = null
   private lastTarget: ActorTargetReference | null = null
+  private talentRanks = new Map<number, number>()
   private threatTable = new Map<ActorKey, number>()
 
   constructor(options: ActorStateOptions) {
@@ -98,6 +99,16 @@ export class ActorState {
   /** Get equipped gear */
   get gear(): GearItem[] {
     return this.gearTracker.getGear()
+  }
+
+  /** Replace the talent ranks reported for this actor. */
+  setTalentRanks(talentRanks: ReadonlyMap<number, number>): void {
+    this.talentRanks = new Map(talentRanks)
+  }
+
+  /** Get a read-only copy of the actor's reported talent ranks. */
+  getTalentRanks(): ReadonlyMap<number, number> {
+    return new Map(this.talentRanks)
   }
 
   /** Check whether the actor is currently alive. */
